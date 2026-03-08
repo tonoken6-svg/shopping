@@ -171,8 +171,10 @@ document.addEventListener('DOMContentLoaded', () => {
             inputs.price.value = ''; // Reset price input
             screens.modal.classList.replace('modal_hidden', 'screen_active');
 
-            // Focus on price input for convenience (might not work perfectly on iPad without user tap, but worth trying)
-            setTimeout(() => inputs.price.focus(), 100);
+            // Wait slightly for DOM to update and modal to display before focusing
+            setTimeout(() => {
+                inputs.price.focus();
+            }, 50);
 
             // Reset input so the same file could be selected again if needed
             inputs.camera.value = '';
@@ -221,22 +223,39 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
 
-            // PDF生成中の見た目を少し調整（例えばチェックボックスを少し固定するなど）のための処理などを書くこともできますが、今回はシンプルに出力します
-            const element = document.getElementById('pdf-content-area');
+            // PDF生成用に、元の要素のHTMLを維持したまま、一時的にタイトルを差し込む
+            const originalArea = document.getElementById('pdf-content-area');
+            const cloneArea = originalArea.cloneNode(true); // クローンを作成
+
+            // タイトル要素を作成
+            const today = new Date();
+            const year = today.getFullYear();
+            const month = today.getMonth() + 1;
+            const day = today.getDate();
+            const titleHtml = `<h1 style="text-align: center; margin-bottom: 20px; font-size: 1.5rem; color: #333;">${year}年${month}月${day}日　今日の買い物メモ</h1>`;
+
+            // ゴミ箱ボタンなどはPDFで不要なので非表示にする
+            const deleteBtns = cloneArea.querySelectorAll('.delete-btn');
+            deleteBtns.forEach(btn => btn.style.display = 'none');
+
+            // PDF用のラッパー要素を作成し、タイトルとリストクローンを結合
+            const pdfWrapper = document.createElement('div');
+            pdfWrapper.style.padding = '20px';
+            pdfWrapper.innerHTML = titleHtml;
+            pdfWrapper.appendChild(cloneArea);
 
             // html2pdfのオプション
             const opt = {
                 margin: 10,
-                filename: '買い物リスト_' + new Date().toLocaleDateString('ja-JP').replace(/\//g, '') + '.pdf',
+                filename: '買い物リスト_' + year + month + day + '.pdf',
                 image: { type: 'jpeg', quality: 0.98 },
                 html2canvas: { scale: 2, useCORS: true },
                 jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
             };
 
-            // PDF生成開始
-            html2pdf().from(element).set(opt).save().then(() => {
-                // Generates and downloads the PDF
-                console.log('PDF saved');
+            // クローンしたラッパー要素からPDF生成開始
+            html2pdf().from(pdfWrapper).set(opt).save().then(() => {
+                console.log('PDF saved with title');
             });
         });
     }
